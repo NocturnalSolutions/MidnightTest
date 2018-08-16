@@ -55,7 +55,7 @@ open class MidnightTestCase: XCTestCase {
         // Initiate request
         let req = HTTP.request(options) { response in
             guard let response = response else {
-                //                XCTFail("Could not fetch response.")
+                XCTFail("Could not fetch response.")
                 return
             }
             // Loop through checking functions
