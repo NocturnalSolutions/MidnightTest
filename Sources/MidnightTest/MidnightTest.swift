@@ -7,7 +7,7 @@ open class MidnightTestCase: XCTestCase {
     public var router: Router? = nil
     public var requestOptions: [ClientRequest.Options] = []
     lazy public var multipartBoundary = "----" + UUID().uuidString
-    public typealias ResponseChecker = (ClientResponse) -> Void
+    public typealias ResponseChecker = (Data, ClientResponse) -> Void
 
     public enum FormEncodingType {
         case Multipart, UrlEncoded
@@ -58,9 +58,15 @@ open class MidnightTestCase: XCTestCase {
                 XCTFail("Could not fetch response.")
                 return
             }
+            // Using 2000 'cuz that's what ClientResponse uses
+            var responseBody: Data = Data(capacity: 2000)
+            guard let _ = try? response.readAllData(into: &responseBody) else {
+                XCTFail("Could not read response data.")
+                return
+            }
             // Loop through checking functions
             for checkerFunc in checker {
-                checkerFunc(response)
+                checkerFunc(responseBody, response)
             }
         }
         // Write body, if any
@@ -128,18 +134,17 @@ open class MidnightTestCase: XCTestCase {
     }
 
     public func checkString(_ string: String) -> ResponseChecker {
-        return { response in
-            if let readString = try? response.readString(), let responseString = readString {
-                XCTAssert(responseString.contains(string), "Could not find \"\(string)\" in response body.")
+        return { body, response in
+            guard let bodyString = String(data: body, encoding: .utf8) else {
+                XCTFail("Could not read response body as string.")
+                return
             }
-            else {
-                XCTFail("Could not retrieve response body.")
-            }
+            XCTAssert(bodyString.contains(string), "Could not find \"\(string)\" in response body.")
         }
     }
 
     public func checkStatus(_ code: HTTPStatusCode) -> ResponseChecker {
-        return { response in
+        return { body, response in
             XCTAssertEqual(response.httpStatusCode, code, "Unexpected response status code (expecting \(code.rawValue), found \(response.httpStatusCode.rawValue)).")
         }
     }
