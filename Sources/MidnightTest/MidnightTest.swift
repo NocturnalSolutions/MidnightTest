@@ -8,12 +8,18 @@ import Foundation
 open class MidnightTestCase: XCTestCase {
     /// Router object used when Kitura is started.
     public var router: Router? = nil
+
     /// Initial ClientRequest Options.
     public var requestOptions: [ClientRequest.Options] = []
+
+    /// Callback to tweak a request before it's executed.
+    public var requestModifier: ((ClientRequest) -> Void)?
+
     /// Boundary used when generating mutlipart data.
     ///
     /// - SeeAlso: multipartEncode()
     lazy public var multipartBoundary = "----" + UUID().uuidString
+
     /// Structure of a ResponseChecker function.
     public typealias ResponseChecker = (Data, ClientResponse) -> Void
 
@@ -97,6 +103,10 @@ open class MidnightTestCase: XCTestCase {
         // Write body, if any
         if let body = body {
             req.write(from: body)
+        }
+        // Call our request tweaker, if any.
+        if let tweaker = requestModifier {
+            tweaker(req)
         }
         // Execute request
         req.end()
