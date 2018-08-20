@@ -177,5 +177,7 @@ Have fun!
 
 ## To do
 - Explain how to stop Xcode's annoying "edit the schema" message
+- Ensure this works on Linux (Nocty, you're so lazy)
 - Add more generators (response header, XML/JSON responses)
 - Cover this in KUD
+- Adapt [Wastebin](https://github.com/NocturnalSolutions/Wastebin) to use this for its testing
