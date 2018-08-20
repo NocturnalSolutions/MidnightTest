@@ -88,7 +88,7 @@ Now we'll go back to Sources/HelloWorld/main.swift and change it to look somethi
 import Kitura
 import HelloWorldApp
 
-let hello = HelloWorld()
+let hello = HelloWorldApp()
 let router = hello.generateRouter()
 
 Kitura.addHTTPServer(onPort: 8080, with: router)
@@ -174,9 +174,23 @@ This example just makes a simple GET requests, since that's all our Hello World 
 
 Have fun!
 
+## Running tests in Xcode
+
+If you're using Xcode and try to run tests through Xcode at this point, you'll get this obnoxious message.
+
+![Xcode sheet: "Configure 'HelloWorld' for testing."](Documentation/Images/not-configured.png)
+
+To resolve this, click the "Edit Scheme…" button. On the next sheet, with the "Test" scheme selected in the list on the left and the "Info" tab open, click the little plus icon in the lower left corner as highlighted in the following image.
+
+![Xcode sheet showing info of the "Test" scheme](Documentation/Images/click-plus.png) 
+
+On the next sheet, simply select the "HelloWorldTests" target (it should be the only one in the list) and click the "Add" button.
+
+![Target selection sheet](Documentation/Images/select-targets.png)
+
+Then click "Test," and your tests should start running.
 
 ## To do
-- Explain how to stop Xcode's annoying "edit the schema" message
 - Ensure this works on Linux (Nocty, you're so lazy)
 - Add more generators (response header, XML/JSON responses)
 - Cover this in KUD
