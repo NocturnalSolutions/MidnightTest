@@ -124,7 +124,18 @@ let package = Package(
 )
 ```
 
-In the empty Tests directory, create a directory named HelloWorldTests, and create HelloWorldTests.swift inside of it. Now that all that overhead is out of the way, here comes the fun part…
+In order to ensure testing works on Linux, we create a file in your empty Tests directory named LinuxMain.swift and give it the following code:
+
+```swift
+import XCTest
+@testable import HelloWorldTests
+
+XCTMain([
+    testCase(HelloWorldTests.allTests)
+])
+```
+
+Finally, in the Tests directory, create a directory named HelloWorldTests, and create HelloWorldTests.swift inside of it. Now that all that overhead is out of the way, here comes the fun part…
 
 ## Writing Tests
 
@@ -134,14 +145,16 @@ The MidnightTestCase class is a subclass of XCTestCase and can be used to define
 
 import HelloWorldApp
 import MidnightTest
+import KituraNet
 
-class HelloWorldTests: MidnightTestCase
+class HelloWorldTests: MidnightTestCase {
 
     public override func setUp() {
-        router = HelloWorld().generateRouter()
+        router = HelloWorldApp().generateRouter()
         requestOptions = ClientRequest.parse("http://localhost:8080/")
         super.setUp()
     }
+}
 ```
 
 Now inside your test methods, you'll basically want to call the `testResponse` method or one of its many overrides with at least two parameters: a path, and one or more `ResponseChecker`s. A `ResponseChecker` is a closure which takes two parameters: a `Data` containing the body of the response fetched from the server, and the original `ClientResponse` object that data was extracted from. So let's check to see if the "/" path for our site gives us an HTTP status code of 200 OK, and its body text contains the "Hello world!" message.
@@ -159,7 +172,18 @@ Now inside your test methods, you'll basically want to call the `testResponse` m
     }
 ```
 
-But wait! We can make that code even shorter, since Midnight Test contains two methods for generating callbacks for checking for HTTP status codes and for body text named `checkStatus()` and `checkString()` respectively. So the above can become:
+Add an `allTests` static var in the HelloWorldTests class which contains a list of all of your test methods. (We only have one for now, but others should have the same format.)
+
+```swift
+
+    public static var allTests = [
+        ("testFrontPage", testFrontPage),
+    ]
+```
+
+Now try running your project tests in the CLI by running `swift test` in the CLI or clicking the Test button in Xcode (see below if Xcode gives you an annoying error message). Your tests should run and (hopefully) pass!
+
+But wait! We can make our test code even shorter, since Midnight Test contains two methods for generating callbacks for checking for HTTP status codes and for body text named `checkStatus()` and `checkString()` respectively. So the above can become:
 
 ```swift
     public func testFrontPage() {
@@ -191,7 +215,6 @@ On the next sheet, simply select the "HelloWorldTests" target (it should be the 
 Then click "Test," and your tests should start running.
 
 ## To do
-- Ensure this works on Linux (Nocty, you're so lazy)
 - Add more generators (response header, XML/JSON responses)
 - Cover this in KUD
 - Adapt [Wastebin](https://github.com/NocturnalSolutions/Wastebin) to use this for its testing
