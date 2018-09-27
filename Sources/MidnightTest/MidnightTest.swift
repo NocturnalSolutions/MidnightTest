@@ -15,6 +15,14 @@ open class MidnightTestCase: XCTestCase {
     /// Callback to tweak a request before it's executed.
     public var requestModifier: ((ClientRequest) -> Void)?
 
+    /// Simplistic cookie support. Cookies set by the server on one request are
+    /// set back on subsequent requests. Be warned that no directives are
+    /// supported, including Expires and Max-Age. Cookies are thrown away
+    /// between test cases. Call tossCookies() to throw them away prematurely.
+    ///
+    /// - SeeAlso: tossCookies()
+    public var useCookies = false
+
     /// Boundary used when generating mutlipart data.
     ///
     /// - SeeAlso: multipartEncode()
@@ -22,6 +30,11 @@ open class MidnightTestCase: XCTestCase {
 
     /// Structure of a ResponseChecker function.
     public typealias ResponseChecker = (Data, ClientResponse) -> Void
+
+    /// Cookie storage.
+    ///
+    /// - SeeAlso: tossCookies()
+    private var cookieJar: [String: String] = [:]
 
     /// Type of form encoding to use when doing a POST response.
     ///
@@ -71,6 +84,7 @@ open class MidnightTestCase: XCTestCase {
 
     override open func tearDown() {
         Kitura.stop()
+        tossCookies()
     }
 
     /// Main test function.
@@ -80,8 +94,31 @@ open class MidnightTestCase: XCTestCase {
     ///     - body: The HTTP request body, if any.
     ///     - checker: Array of ResponseChecker functions to check the response with.
     public func testResponse(options: [ClientRequest.Options], body: Data? = nil, checker: [ResponseChecker]) {
+        var mutableOptions = options
+        if useCookies && cookieJar.count > 0 {
+            var existingCookieHeaders: String? = nil
+            var joinedCookie = cookieJar.map { "\($0)=\($1)" }.joined(separator: "; ")
+            for option in options {
+                switch option {
+                case .headers(var headers):
+                    if let existing = headers["Cookie"] {
+                        existingCookieHeaders = existing
+                        // Not breaking from here because we want "later"
+                        // settings to override earlier ones as the "real"
+                        // code will.
+                    }
+                default: break
+                }
+            }
+            if let existingCookieHeaders = existingCookieHeaders {
+                joinedCookie = existingCookieHeaders + "; " + joinedCookie
+            }
+            // This will ultimately clobber any pre-existing Cookie header.
+            mutableOptions.append(.headers(["Cookie": joinedCookie]))
+        }
+
         // Initiate request
-        let req = HTTP.request(options) { response in
+        let req = HTTP.request(mutableOptions) { response in
             guard let response = response else {
                 XCTFail("Could not fetch response.")
                 return
@@ -94,6 +131,18 @@ open class MidnightTestCase: XCTestCase {
             guard let _ = try? response.readAllData(into: &responseBody) else {
                 XCTFail("Could not read response data.")
                 return
+            }
+            // Save cookies if applicable
+            if self.useCookies, let setCookies = response.headers["Set-Cookie"] {
+                let pattern = try! NSRegularExpression(pattern: "^([^=]+)=([^;]+)", options: [])
+                for cookie in setCookies {
+                    let matches = pattern.matches(in: cookie, range: NSRange(cookie.startIndex..., in: cookie))
+                    if let cookieNameRange = Range(matches[0].range(at: 1), in: cookie), let cookieValRange = Range(matches[0].range(at: 2), in: cookie) {
+                        let cookieName = String(cookie[cookieNameRange])
+                        let cookieValue = String(cookie[cookieValRange])
+                        self.cookieJar[cookieName] = cookieValue
+                    }
+                }
             }
             // Loop through checking functions
             for checkerFunc in checker {
@@ -283,5 +332,15 @@ open class MidnightTestCase: XCTestCase {
             }
         }
         return body + "--"
+    }
+
+    /// Empty the cookie jar.
+    ///
+    /// The cookie jar is automatically emptied between test cases, but if it's
+    /// desirable to empty the jar before that, call this method.
+    ///
+    /// - SeeAlso: cookieJar
+    public func tossCookies() {
+        cookieJar.removeAll(keepingCapacity: false)
     }
 }
